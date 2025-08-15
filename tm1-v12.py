@@ -22,6 +22,7 @@ params = {
     "ssl": True,
     "verify": True
 }
+tm1 = TM1Service(**params)
 
 async def make_nws_request(url: str) -> dict[str, Any] | None:
     """Make a request to the NWS API with proper error handling."""
@@ -113,7 +114,7 @@ async def get_cubes_tm1():
     Returns:
         List of cube names
     """
-    tm1 = TM1Service(**params)
+
     print("Connected Successfully: ",tm1.server.get_product_version())
     return tm1.cubes.get_all_names()
 
@@ -127,7 +128,7 @@ async def create_dim_tm1(dim_name: str):
     Returns:
         str: Success message
     """
-    tm1 = tm1 = TM1Service(**params)
+ 
     new_hier=Hierarchy(dimension_name=dim_name,name=dim_name)
     new_dim=Dimension(dim_name, hierarchies=[new_hier])
     tm1.dimensions.create(new_dim)
@@ -145,7 +146,7 @@ async def add_dim_elements_tm1(dim_name: str, elements: list, el_type: str):
     Returns:
         str: Success message
     """
-    tm1 = tm1 = TM1Service(**params)
+
     dim = tm1.dimensions.get(dim_name)
     for item in elements:
         dim.default_hierarchy.add_element(element_name=item,element_type=el_type)
@@ -162,36 +163,37 @@ async def create_cube_tm1(cube_name: str, dimensions: list):
     Returns:
         str: Success message
     """
-    tm1 = TM1Service(**params)
+
     new_cube=Cube(name=cube_name, dimensions=dimensions)
     tm1.cubes.create(new_cube)
     return "Success!"
 
-# @mcp.tool()
-# async def write_to_tm1_cube(value: float, cube_name: str, at_intersection: list):
-#     """
-#     Writes a value to a specific cell in a TM1 cube.
+@mcp.tool()
+async def write_to_tm1_cube(value: float, cube_name: str, at_intersection: list):
+    """
+    Writes a value to a specific cell in a TM1 cube.
     
-#     Args:
-#         cube_name: Name of the cube to write to
-#         value: Value to write
-#         coordinates: List of dimension coordinates for the cell
-#     Returns:
-#         str: Success message
-#     """
+    Args:
+        cube_name: Name of the cube to write to
+        value: Value to write
+        coordinates: List of dimension coordinates for the desired cell
+    Returns:
+        str: Success message
+    """
+    
+    current_cube=tm1.cubes.get(cube_name)
+    dim_list=current_cube.dimensions
+    dim_validate=True
 
-#     tm1 = TM1Service(address='vm-training.acg.local', port=26471, user='admin', password='', ssl=True)
+    for dim in dim_list:
+        if tm1.elements.exists(dim, dim, at_intersection[dim_list.index(dim)])!=True:
+            dim_validate=False
     
-#     current_cube=tm1.cubes.get(cube_name)
-#     dim_list=current_cube.dimensions
-#     dim_validate=True
-
-#     for dim in dim_list:
-#         if   at_intersection[dim_list.index(dim)] ... needs more work
-#             dim_validate=False
-    
-#     tm1.cubes.cells.write(value=value, cube_name=cube_name, coordinates=at_intersection)
-#     return "Success!"
+    if dim_validate==True:
+        tm1.cubes.cells.write_value(value=value, cube_name=cube_name, element_tuple=at_intersection)
+        return "Success!"
+    else:
+        return "Failed, check dimension element order"
 
 if __name__ == "__main__":
     # Initialize and run the server
