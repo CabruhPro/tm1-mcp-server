@@ -94,6 +94,25 @@ async def get_view_from_cube_tm1(cube_name: str, view_name: str):
     view_csv = tm1.cubes.cells.execute_view_csv(cube_name=cube_name, view_name=view_name)
     return view_csv
 
+@mcp.tool()
+async def get_data_in_cube(cube_name: str, intersect: list):
+    """
+    Retrieves specific cell data from a tm1 cube 
+
+    Args:
+        cube_name: the name of the cube
+        intersect: a list containing the dimension elements that make up the desired intersection
+    Returns:
+        float: the value at the cell
+    """
+    str_formatted = ""
+    for item in intersect:
+        if str_formatted == "":
+            str_formatted=item
+        else:
+            str_formatted=str_formatted+","+item
+    return (tm1.cells.get_value(cube_name=cube_name,elements=str_formatted))
+
 ##=============================================================== EXECUTE =============================================================================
 
 @mcp.tool()
@@ -196,6 +215,20 @@ async def insert_data_into_cube_tm1(value: float, cube_name: str, at_intersectio
     else:
         return "Failed, check dimension element order"
     
+##================================================================ EXISTS ===============================================================================
+@mcp.tool()
+async def element_exists_in_dim(el_name: str, dim: str):
+    """
+    Checks if a specified element exists in a dimension on the tm1 server
+    
+    Args:
+        el_name: element name
+        dim: dimension name
+    Returns:
+        bool: True or False
+    """
+    return tm1.elements.exists(dimension_name=dim,hierarchy_name=dim,element_name=el_name)
+
 #main method - starts MCP server
 if __name__ == "__main__":
     # Initialize and run the server
