@@ -1,141 +1,159 @@
 from typing import Any
-import httpx
+#import httpx
 from mcp.server.fastmcp import FastMCP
 from TM1py.Services import TM1Service
 from TM1py.Objects import Dimension,Element,Hierarchy,Cube
-from dotenv import load_dotenv
-import os
+#from dotenv import load_dotenv
+#import os
 
 # Initialize FastMCP server
-mcp = FastMCP("weather")
+mcp = FastMCP("tm1-v12")
 
 # Constants
-NWS_API_BASE = "https://api.weather.gov"
-USER_AGENT = "weather-app/1.0"
+# NWS_API_BASE = "https://api.weather.gov"
+# USER_AGENT = "weather-app/1.0"
 
-load_dotenv()
+V12_API_KEY = "azE6dXNyX2QxY2ViYzI1LTQ2YmQtM2RlNS1hZTZkLTQxMmNlOGEwZjE1ODo2aE04a3NYUTJ5cnl1MHpjV29VQ1ZXVWxEcVFYdlBCanUxa0ZXZWJJVS80PTpDdDZy"
+
 params = {
     "base_url": "https://us-east-1.planninganalytics.saas.ibm.com/api/RGLC2XR62EDS/v0/tm1/Watson_Integration/",
     "user": "apikey",
-    "password": os.getenv("V12_API_KEY"),
+    "password": V12_API_KEY, #os.getenv("V12_API_KEY"),
     "async_requests_mode": True,
     "ssl": True,
     "verify": True
 }
 tm1 = TM1Service(**params)
-
-async def make_nws_request(url: str) -> dict[str, Any] | None:
-    """Make a request to the NWS API with proper error handling."""
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept": "application/geo+json"
-    }
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url, headers=headers, timeout=30.0)
-            response.raise_for_status()
-            return response.json()
-        except Exception:
-            return None
-
-def format_alert(feature: dict) -> str:
-    """Format an alert feature into a readable string."""
-    props = feature["properties"]
-    return f"""
-Event: {props.get('event', 'Unknown')}
-Area: {props.get('areaDesc', 'Unknown')}
-Severity: {props.get('severity', 'Unknown')}
-Description: {props.get('description', 'No description available')}
-Instructions: {props.get('instruction', 'No specific instructions provided')}
-"""
+    
+##=============================================================== GETS ===============================================================================
 
 @mcp.tool()
-async def get_alerts(state: str) -> str:
-    """Get weather alerts for a US state.
-
-    Args:
-        state: Two-letter US state code (e.g. CA, NY)
+async def get_all_cubes_tm1():
     """
-    url = f"{NWS_API_BASE}/alerts/active/area/{state}"
-    data = await make_nws_request(url)
-
-    if not data or "features" not in data:
-        return "Unable to fetch alerts or no alerts found."
-
-    if not data["features"]:
-        return "No active alerts for this state."
-
-    alerts = [format_alert(feature) for feature in data["features"]]
-    return "\n---\n".join(alerts)
-
-@mcp.tool()
-async def get_forecast(latitude: float, longitude: float) -> str:
-    """Get weather forecast for a location.
-
-    Args:
-        latitude: Latitude of the location
-        longitude: Longitude of the location
-    """
-    # First get the forecast grid endpoint
-    points_url = f"{NWS_API_BASE}/points/{latitude},{longitude}"
-    points_data = await make_nws_request(points_url)
-
-    if not points_data:
-        return "Unable to fetch forecast data for this location."
-
-    # Get the forecast URL from the points response
-    forecast_url = points_data["properties"]["forecast"]
-    forecast_data = await make_nws_request(forecast_url)
-
-    if not forecast_data:
-        return "Unable to fetch detailed forecast."
-
-    # Format the periods into a readable forecast
-    periods = forecast_data["properties"]["periods"]
-    forecasts = []
-    for period in periods[:5]:  # Only show next 5 periods
-        forecast = f"""
-{period['name']}:
-Temperature: {period['temperature']}°{period['temperatureUnit']}
-Wind: {period['windSpeed']} {period['windDirection']}
-Forecast: {period['detailedForecast']}
-"""
-        forecasts.append(forecast)
-
-    return "\n---\n".join(forecasts)
-
-@mcp.tool()
-async def get_cubes_tm1():
-    """
-    Get List of cubes from TM1 server.
-
-    Args:
-        none
+    Get all cubes from the TM1 server.
     Returns:
         List of cube names
     """
-
-    print("Connected Successfully: ",tm1.server.get_product_version())
-    return tm1.cubes.get_all_names()
+    cubes = tm1.cubes.get_all()
+    return cubes
 
 @mcp.tool()
-async def create_dim_tm1(dim_name: str):
+async def get_all_dimensions_tm1():
+    """
+    Get all dimensions from the TM1 server.
+    Returns:
+        List of dimension names
+    """
+    dimensions_list = tm1.dimensions.get_all_names()
+    return dimensions_list
+
+@mcp.tool()
+async def get_dimension_tm1(dim_name: str):
+    """
+    Get a dimension from the TM1 server.
+    Returns:
+        A Dimension object
+    """
+    dimension = tm1.dimensions.get(dimension_name=dim_name)
+    return dimension
+
+@mcp.tool()
+async def get_dimensions_in_cube_tm1(cube_name: str):
+    """
+    Get all dimensions in a specific cube.
+    Args:
+        cube_name: Name of the cube
+    Returns:
+        List of dimension names in the cube
+    """
+    cube = tm1.cubes.get(cube_name=cube_name)
+    return cube.dimensions
+
+@mcp.tool()
+async def get_all_elements_in_dimension_tm1(dim_name: str):
+    """
+    Get all elements in a specific dimension.
+    Args:
+        dim_name: Name of the dimension
+    Returns:
+        List of element names
+    """
+    elements = tm1.elements.get_elements(dimension_name=dim_name, hierarchy_name=dim_name)
+    return elements
+
+@mcp.tool()
+async def get_view_from_cube_tm1(cube_name: str, view_name: str):
+    """
+    Get a view from a cube.
+    Args:
+        cube_name: Name of the cube
+        view_name: Name of the view
+    Returns:
+        The view object or its MDX string
+    """
+    view_csv = tm1.cubes.cells.execute_view_csv(cube_name=cube_name, view_name=view_name)
+    return view_csv
+
+##=============================================================== EXECUTE =============================================================================
+
+@mcp.tool()
+async def execute_mdx_view_on_cube_tm1(mdx: str):
+    """
+    Execute an MDX view on a cube.
+    Args:
+        mdx: MDX query string
+    Returns:
+        Query result as a list of dictionaries
+    """
+    view_csv = tm1.cubes.cells.execute_mdx(mdx=mdx)
+    return view_csv
+
+# @mcp.tool()
+# async def execute_mdx_view_on_dimension_tm1(mdx: str):
+#     """
+#     Execute an MDX view on a dimension.
+#     Args:
+#         mdx: MDX query string
+#     Returns:
+#         Query result as a list of dictionaries
+#     """
+#     return tm1.dimensions.hierarchies.elements.execute_mdx(mdx)
+
+##=============================================================== CREATE ===============================================================================
+
+@mcp.tool()
+async def create_cube_tm1(cube_name: str, dimensions: list):
+    """
+    Creates a new cube on the TM1 server.
+    Args:
+        cube_name: Name of the cube to create
+        dimensions: List of dimension names for the cube, order matters - measures should be always last and dimensions should be in relative size order - ascending
+    Returns:
+        Cube: the new tm1 cube object
+    """
+    new_cube=Cube(name=cube_name, dimensions=dimensions)
+    tm1.cubes.create(new_cube)
+    return new_cube
+
+@mcp.tool()
+async def create_dimension_tm1(dim_name: str):
     """
     Creates a new dimension on the TM1 server.
 
     Args:
         dim_name: Name of the dimension to create
     Returns:
-        str: Success message
+        Dimension: the new tm1 dimension object
     """
- 
     new_hier=Hierarchy(dimension_name=dim_name,name=dim_name)
     new_dim=Dimension(dim_name, hierarchies=[new_hier])
     tm1.dimensions.create(new_dim)
-    return "Success!"
+    return new_dim
+
+##================================================================ WRITE ===============================================================================
 
 @mcp.tool()
-async def add_dim_elements_tm1(dim_name: str, elements: list, el_type: str):
+async def add_dimension_elements_tm1(dim_name: str, elements: list, el_type: str):
     """
     Adds elements to a dimension on the TM1 server.
 
@@ -146,7 +164,6 @@ async def add_dim_elements_tm1(dim_name: str, elements: list, el_type: str):
     Returns:
         str: Success message
     """
-
     dim = tm1.dimensions.get(dim_name)
     for item in elements:
         dim.default_hierarchy.add_element(element_name=item,element_type=el_type)
@@ -154,22 +171,7 @@ async def add_dim_elements_tm1(dim_name: str, elements: list, el_type: str):
     return "Success!"
 
 @mcp.tool()
-async def create_cube_tm1(cube_name: str, dimensions: list):
-    """
-    Creates a new cube on the TM1 server.
-    Args:
-        cube_name: Name of the cube to create
-        dimensions: List of dimension names for the cube, order matters - measures should be always last and dimensions should be in relative size order - ascending
-    Returns:
-        str: Success message
-    """
-
-    new_cube=Cube(name=cube_name, dimensions=dimensions)
-    tm1.cubes.create(new_cube)
-    return "Success!"
-
-@mcp.tool()
-async def write_to_tm1_cube(value: float, cube_name: str, at_intersection: list):
+async def write_to_cube_tm1(value: float, cube_name: str, at_intersection: list):
     """
     Writes a value to a specific cell in a TM1 cube.
     
@@ -180,7 +182,6 @@ async def write_to_tm1_cube(value: float, cube_name: str, at_intersection: list)
     Returns:
         str: Success message
     """
-    
     current_cube=tm1.cubes.get(cube_name)
     dim_list=current_cube.dimensions
     dim_validate=True
@@ -194,21 +195,8 @@ async def write_to_tm1_cube(value: float, cube_name: str, at_intersection: list)
         return "Success!"
     else:
         return "Failed, check dimension element order"
-
-@mcp.tool()
-async def get_dim_order_in_cube(cube_name: str):
-    curr = tm1.cubes.get(cube_name=cube_name)
-    return(curr.dimensions)
-
-@mcp.tool()
-async def dimension_get_elements(dim_name: str):
-    elements=tm1.elements.get_elements(dimension_name=dim_name,hierarchy_name=dim_name)
-    return elements
-
-#Need to write tools for
-#   read data in cube
-#   clear data in cube
-
+    
+#main method - starts MCP server
 if __name__ == "__main__":
     # Initialize and run the server
     mcp.run(transport='stdio')
