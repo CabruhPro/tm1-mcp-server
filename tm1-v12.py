@@ -195,6 +195,20 @@ async def write_to_tm1_cube(value: float, cube_name: str, at_intersection: list)
     else:
         return "Failed, check dimension element order"
 
+@mcp.tool()
+async def get_dim_order_in_cube(cube_name: str):
+    curr = tm1.cubes.get(cube_name=cube_name)
+    return(curr.dimensions)
+
+@mcp.tool()
+async def dimension_get_elements(dim_name: str):
+    elements=tm1.elements.get_elements(dimension_name=dim_name,hierarchy_name=dim_name)
+    return elements
+
+#Need to write tools for
+#   read data in cube
+#   clear data in cube
+
 if __name__ == "__main__":
     # Initialize and run the server
     mcp.run(transport='stdio')
