@@ -153,7 +153,7 @@ async def create_dimension_tm1(dim_name: str):
 ##================================================================ WRITE ===============================================================================
 
 @mcp.tool()
-async def add_dimension_elements_tm1(dim_name: str, elements: list, el_type: str):
+async def insert_dimension_elements_tm1(dim_name: str, elements: list, el_type: str):
     """
     Adds elements to a dimension on the TM1 server.
 
@@ -171,7 +171,7 @@ async def add_dimension_elements_tm1(dim_name: str, elements: list, el_type: str
     return dim
 
 @mcp.tool()
-async def write_to_cube_tm1(value: float, cube_name: str, at_intersection: list):
+async def insert_data_into_cube_tm1(value: float, cube_name: str, at_intersection: list):
     """
     Writes a value to a specific cell in a TM1 cube.
     
