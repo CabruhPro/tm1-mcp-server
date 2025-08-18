@@ -162,13 +162,13 @@ async def add_dimension_elements_tm1(dim_name: str, elements: list, el_type: str
         elements: List of element names to add
         el_type: Type of the new elements (e.g. "Numeric", "String")
     Returns:
-        str: Success message
+        dim: the Dimension object we have inserted into
     """
     dim = tm1.dimensions.get(dim_name)
     for item in elements:
         dim.default_hierarchy.add_element(element_name=item,element_type=el_type)
     tm1.dimensions.update(dimension=dim,keep_existing_attributes=True)
-    return "Success!"
+    return dim
 
 @mcp.tool()
 async def write_to_cube_tm1(value: float, cube_name: str, at_intersection: list):
