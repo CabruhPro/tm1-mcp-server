@@ -158,7 +158,13 @@ async def execute_ti_process(process_name: str, parameters: dict):
     Returns:
         str: Success message
     """
-    return tm1.processes.execute(process_name=process_name,parameters=parameters)
+    proc = tm1.processes.get(process_name)
+    for key in parameters.keys():
+        for param in proc.parameters:
+            if (param['Name']==key):
+                param['Value']=parameters[key]
+
+    return tm1.processes.execute_process_with_return(proc)
 
 # @mcp.tool()
 # async def execute_mdx_view_on_dimension_tm1(mdx: str):
