@@ -113,6 +113,26 @@ async def get_data_in_cube(cube_name: str, intersect: list):
             str_formatted=str_formatted+","+item
     return (tm1.cells.get_value(cube_name=cube_name,elements=str_formatted))
 
+@mcp.tool()
+async def get_process_parameters(process_name: str):
+    """
+    Get all parameters for a given TI process.
+    Args:
+        process_name: Name of the process
+    Returns:
+        dict: A dictionary of process parameters
+    """
+    return tm1.processes.get(name_process=process_name).parameters
+
+@mcp.tool()
+async def get_all_processes():
+    """
+    Get all processes from the TM1 server.
+    Returns:
+        List of process objects
+    """
+    return tm1.processes.get_all()
+
 ##=============================================================== EXECUTE =============================================================================
 
 @mcp.tool()
@@ -126,6 +146,19 @@ async def execute_mdx_view_on_cube_tm1(mdx: str):
     """
     view_csv = tm1.cubes.cells.execute_mdx(mdx=mdx)
     return view_csv
+
+@mcp.tool()
+async def execute_ti_process(process_name: str, parameters: dict):
+    """
+    Execute a TI process located on the TM1 server.
+    
+    Args:
+        process_name: the name of the process on the server
+        parameters: the parameters to pass to the process, if unknown use get_process_parameters
+    Returns:
+        str: Success message
+    """
+    return tm1.processes.execute(process_name=process_name,parameters=parameters)
 
 # @mcp.tool()
 # async def execute_mdx_view_on_dimension_tm1(mdx: str):
