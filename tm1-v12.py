@@ -223,9 +223,9 @@ async def insert_dimension_elements_tm1(dim_name: str, elements: list, el_type: 
     return dim
 
 @mcp.tool()
-async def insert_data_into_cube_tm1(value: float, cube_name: str, at_intersection: list):
+async def insert_float_data_into_cube_tm1(value: float, cube_name: str, at_intersection: list):
     """
-    Writes a value to a specific cell in a TM1 cube.
+    Writes a numeric value to a specific cell in a TM1 cube.
     
     Args:
         cube_name: Name of the cube to write to
@@ -248,6 +248,31 @@ async def insert_data_into_cube_tm1(value: float, cube_name: str, at_intersectio
     else:
         return "Failed, check dimension element order"
     
+@mcp.tool()
+async def insert_string_data_into_cube_tm1(value: str, cube_name: str, at_intersection: list):
+    """
+    Writes a string value to a specific cell in a TM1 cube.
+    
+    Args:
+        cube_name: Name of the cube to write to
+        value: Value to write
+        coordinates: List of dimension coordinates for the desired cell
+    Returns:
+        str: Success message
+    """
+    current_cube=tm1.cubes.get(cube_name)
+    dim_list=current_cube.dimensions
+    dim_validate=True
+
+    for dim in dim_list:
+        if tm1.elements.exists(dim, dim, at_intersection[dim_list.index(dim)])!=True:
+            dim_validate=False
+    
+    if dim_validate==True:
+        tm1.cubes.cells.write_value(value=value, cube_name=cube_name, element_tuple=at_intersection)
+        return "Success!"
+    else:
+        return "Failed, check dimension element order"
 ##================================================================ EXISTS ===============================================================================
 @mcp.tool()
 async def element_exists_in_dim(el_name: str, dim: str):
