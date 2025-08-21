@@ -9,11 +9,21 @@ from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process,Chore,ChoreTa
 #Current Outstanding
 #   -create a chore of them with configs
 #   -delete process, cube, dimension, dimension elements
-#
-#Business workflow
-#   -create views and export them to csv
-#       time, prod, currency, measure
-#   -import csvs into views
+#   -create views
+#   -export views to csv or xlsx
+
+#Next functions to create
+    # create_mdx_view_tm1(cube_name, view_name, mdx, private=False)
+    # create_native_view_tm1(cube_name, view_name, rows, columns, titles, private=False)
+    # get_view_tm1(cube_name, view_name, private=False)
+    # delete_view_tm1(cube_name, view_name, private=False)
+    # execute_view_tm1(cube_name, view_name, private=False, skip_zeros=True)
+
+    # create_subset_by_mdx_tm1(dimension_name, subset_name, mdx_expression, private=False)
+    # create_subset_by_elements_tm1(dimension_name, subset_name, elements, private=False)
+    # get_subset_tm1(dimension_name, subset_name, private=False)
+    # delete_subset_tm1(dimension_name, subset_name, private=False)
+    # get_subset_elements_tm1(dimension_name, subset_name, private=False)
 
 # Initialize FastMCP server
 mcp = FastMCP("tm1-v12")
