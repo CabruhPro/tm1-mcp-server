@@ -2,7 +2,7 @@ from typing import Any
 #import httpx
 from mcp.server.fastmcp import FastMCP
 from TM1py.Services import TM1Service
-from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process
+from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process,Chore,ChoreTask,ChoreFrequency,ChoreStartTime
 #from dotenv import load_dotenv
 #import os
 
@@ -165,6 +165,15 @@ async def get_TI_process_code(process_name: str, code_section: str):
     else:
         return 'Failed - Please enter a valid code section. options are prolog, metadata, data, and epilog'
 
+@mcp.tool()
+async def get_all_chores():
+    """
+    Get all chores from the TM1 server.
+    Returns:
+        List of chore objects
+    """
+    return tm1.chores.get_all
+
 ##=============================================================== EXECUTE =============================================================================
 
 @mcp.tool()
@@ -256,6 +265,40 @@ async def create_process_tm1(proc_name:str):
     tm1.processes.create(proc)
     return proc
 
+#this function is not complete, only works to establish config options, cannot yet add processes becuase of depreciated tm1py functions
+#will proceed with REST API calls when I finish it
+@mcp.tool()
+async def create_chore_tm1(chore_name:str, start_time:str, frequency:str, execution_mode:str, active:bool, task_list:list[dict]):
+    """
+    Creates a new chore on the TM1 server. Tasks must be added seperately via insert_process_into_chore()
+
+    Args:
+        chore_name: a name for the chore
+        start_time: the time to start the chore in ISO 8601 format
+            Ex: '2025-08-21T10:00:00' 
+        frequency: the frequency of the chore, in ISO 8601 duration format
+            Ex: "P01DT00H00M00S"
+        execution_mode: the execution mode of the chore, valid options are 'MultipleCommit', 'SingleCommit'
+        active: whether the chore is active or not
+        task_list: a list of dictionaries that contain ChoreTask objects
+            Ex: [ChoreTask:{"Process@odata.bind": "Processes('Sample Process - Daily Backup')", "Parameters": []}, 
+                ChoreTask:{"Process@odata.bind": "Processes('Sample Process - Weekly Report')", "Parameters": [{"Name": "P1", "Value": "abc"}, {"Name": "P2", "Value": 99}]}]
+    Returns:
+        Chore: the new tm1 chore object
+    """
+    chore = Chore(
+        name=chore_name, 
+        start_time=ChoreStartTime.from_string(start_time), 
+        frequency=ChoreFrequency.from_string(frequency), 
+        execution_mode=execution_mode, 
+        active=active,
+        dst_sensitivity=False,
+        tasks=task_list
+    )
+
+    tm1.chores.create(chore)
+    return chore
+
 # @mcp.tool()
 # async def create_view_tm1(view_name:str, ):
 
@@ -296,6 +339,17 @@ async def delete_process_tm1(proc_name:str):
         
     """
     return tm1.processes.delete(proc_name)
+
+@mcp.tool()
+async def delete_chore_tm1(chore_name:str):
+    """
+    Deletes a chore on the TM1 server.
+    Args:
+        chore_name: Name of the process to delete
+    Returns:
+        
+    """
+    return tm1.chores.delete(chore_name=chore_name)
 
 ##================================================================ WRITE ===============================================================================
 
@@ -456,6 +510,25 @@ async def overwrite_process_code_section(process_name:str, code_section:str, new
     tm1.processes.update(proc)
     return proc
     
+# @mcp.tool()
+# async def insert_process_into_chore(chore_name: str, process_name: str, parameters: list[dict[str, str]], position: int = 1):
+#     """
+#     Inserts a process into a chore on the TM1 server.
+#     Args:
+#         chore_name: Name of the chore to insert the process into
+#         process_name: Name of the process to insert
+#     Returns:
+#         Chore: the updated chore object
+#     """
+#     chore = tm1.chores.get(chore_name)
+#     task = ChoreTask(
+#         process_name=process_name,
+#         step=position,
+#         parameters=parameters
+#     )
+#     chore.tasks.insert(task)
+#     return chore
+
 ##================================================================ EXISTS ===============================================================================
 
 @mcp.tool()
