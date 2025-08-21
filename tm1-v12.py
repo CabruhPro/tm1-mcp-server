@@ -172,7 +172,7 @@ async def get_all_chores():
     Returns:
         List of chore objects
     """
-    return tm1.chores.get_all
+    return tm1.chores.get_all()
 
 ##=============================================================== EXECUTE =============================================================================
 
