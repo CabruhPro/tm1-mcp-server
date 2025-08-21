@@ -2,9 +2,18 @@ from typing import Any
 #import httpx
 from mcp.server.fastmcp import FastMCP
 from TM1py.Services import TM1Service
-from TM1py.Objects import Dimension,Element,Hierarchy,Cube
+from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process
 #from dotenv import load_dotenv
 #import os
+
+#Current Outstanding
+#   -create a chore of them with configs
+#   -delete process, cube, dimension, dimension elements
+#
+#Business workflow
+#   -create views and export them to csv
+#       time, prod, currency, measure
+#   -import csvs into views
 
 # Initialize FastMCP server
 mcp = FastMCP("tm1-v12")
@@ -133,6 +142,29 @@ async def get_all_processes():
     """
     return tm1.processes.get_all()
 
+@mcp.tool()
+async def get_TI_process_code(process_name: str, code_section: str):
+    """
+    Gets entire code section for a given TI process.
+    Args:
+        process_name: Name of the process
+        code_section: the section of code you want to receive. 
+            valid options are prolog, metadata, data, and epilog
+    Returns:
+        str: the relevant code section
+    """
+    proc = tm1.processes.get(name_process=process_name)
+    if code_section == 'prolog':
+        return proc.prolog_procedure
+    elif code_section == 'metadata':
+        return proc.metadata_procedure
+    elif code_section == 'data':
+        return proc.data_procedure
+    elif code_section == 'epilog':
+        return proc.epilog_procedure
+    else:
+        return 'Failed - Please enter a valid code section. options are prolog, metadata, data, and epilog'
+
 ##=============================================================== EXECUTE =============================================================================
 
 @mcp.tool()
@@ -185,7 +217,9 @@ async def create_cube_tm1(cube_name: str, dimensions: list):
     Creates a new cube on the TM1 server.
     Args:
         cube_name: Name of the cube to create
-        dimensions: List of dimension names for the cube, order matters - measures should be always last and dimensions should be in relative size order - ascending
+        dimensions: List of dimension names for the cube, order matters - 
+            measures should be always last and dimensions should be in 
+            relative size order - ascending
     Returns:
         Cube: the new tm1 cube object
     """
@@ -207,6 +241,61 @@ async def create_dimension_tm1(dim_name: str):
     new_dim=Dimension(dim_name, hierarchies=[new_hier])
     tm1.dimensions.create(new_dim)
     return new_dim
+
+@mcp.tool()
+async def create_process_tm1(proc_name:str):
+    """
+    Creates a new process on the TM1 server.
+
+    Args:
+        proc_name: Name of the process to create
+    Returns:
+        Process: the new tm1 process object
+    """
+    proc=Process(name=proc_name)
+    tm1.processes.create(proc)
+    return proc
+
+# @mcp.tool()
+# async def create_view_tm1(view_name:str, ):
+
+#     return ''
+
+##=============================================================== DELETE ===============================================================================
+
+@mcp.tool()
+async def delete_dimension_tm1(dim_name: str):
+    """
+    Deletes a dimension on the TM1 server. You cannot delete dimensions that are currently used in cubes
+
+    Args:
+        dim_name: Name of the dimension to delete
+    Returns:
+        
+    """
+    return tm1.dimensions.delete(dimension_name=dim_name)
+
+@mcp.tool()
+async def delete_cube_tm1(cube_name: str):
+    """
+    Deletes a cube on the TM1 server.
+    Args:
+        cube_name: Name of the cube to delete
+    Returns:
+        
+    """
+    return tm1.cubes.delete(cube_name=cube_name)
+
+@mcp.tool()
+async def delete_process_tm1(proc_name:str):
+    """
+    Deletes a process on the TM1 server.
+    Args:
+        proc_name: Name of the process to delete
+    Returns:
+        
+    """
+    return tm1.processes.delete(proc_name)
 
 ##================================================================ WRITE ===============================================================================
 
@@ -231,12 +320,14 @@ async def insert_dimension_elements_tm1(dim_name: str, elements: list, el_type: 
 @mcp.tool()
 async def insert_float_data_into_cube_tm1(value: float, cube_name: str, at_intersection: list):
     """
-    Writes a numeric value to a specific cell in a TM1 cube.
+    Writes a numeric value to a specific cell in a TM1 cube. If the dimension order is unknown use 
+    get_dimensions_in_cube_tm1() to retreive the ordering
     
     Args:
         cube_name: Name of the cube to write to
         value: Value to write
         coordinates: List of dimension coordinates for the desired cell
+        Ex:    ['Jan','Tokyo','Temperature']
     Returns:
         str: Success message
     """
@@ -257,12 +348,14 @@ async def insert_float_data_into_cube_tm1(value: float, cube_name: str, at_inter
 @mcp.tool()
 async def insert_string_data_into_cube_tm1(value: str, cube_name: str, at_intersection: list):
     """
-    Writes a string value to a specific cell in a TM1 cube.
+    Writes a string value to a specific cell in a TM1 cube. If the dimension order is unknown use 
+    get_dimensions_in_cube_tm1() to retreive the ordering
     
     Args:
         cube_name: Name of the cube to write to
         value: Value to write
         coordinates: List of dimension coordinates for the desired cell
+        Ex:    ['Jan','Tokyo','Temperature']
     Returns:
         str: Success message
     """
@@ -279,7 +372,92 @@ async def insert_string_data_into_cube_tm1(value: str, cube_name: str, at_inters
         return "Success!"
     else:
         return "Failed, check dimension element order"
+    
+@mcp.tool()
+async def bulk_insert_data_into_cube_tm1(cube_name: str, data_records: list[dict]):
+    """
+    Bulk insert multiple data points into a TM1 cube.
+    
+    Args:
+        cube_name: Name of the cube
+        data_records: List of dictionaries with 'coordinates' and 'value' keys
+                     [{"coordinates": ["Jan", "Tokyo", "Temperature"], "value": 40},
+                      {"coordinates": ["Feb", "Cairo", "Temperature"], "value": 81},
+                      {"coordinates": ["Aug", "Cairo", "Rainfall"], "value": 42}, ...]
+    
+    Returns:
+        Success message with count of records inserted
+    """
+    cellset = {}
+    for record in data_records:
+        # Build coordinate tuple for tm1py
+        coord_tuple = tuple(record['coordinates'])
+        cellset[coord_tuple] = record['value']
+    
+    tm1.cubes.cells.write_values(cube_name, cellset)
+    return f"Successfully inserted {len(data_records)} records into {cube_name}"
+
+@mcp.tool()
+async def inject_into_process_code(process_name:str, code_section:str, new_code:str):
+    '''
+    Writes code to a given TI process by appending the provided code onto the existing
+    process section. Valid options for code section are: prolog, metadata, data, and epilog
+    
+    Args:
+        process_name: the name of the process to inject code into
+        code_section: the TI process section where the code should be inserted. 
+            valid options are: prolog, metadata, data, and epilog
+        new_code: a string containing the exact code and formatting to insert
+    Returns:
+        Process: the process object which has been changed
+    '''
+    proc = tm1.processes.get(name_process=process_name)
+    if code_section == 'prolog':
+        proc.prolog_procedure+=new_code
+    elif code_section == 'metadata':
+        proc.metadata_procedure+=new_code
+    elif code_section == 'data':
+        proc.data_procedure+=new_code
+    elif code_section == 'epilog':
+        proc.epilog_procedure+=new_code
+    else:
+        return 'Failed - Please enter a valid code section. options are prolog, metadata, data, and epilog'
+    tm1.processes.update(proc)
+    return proc
+
+@mcp.tool()
+async def overwrite_process_code_section(process_name:str, code_section:str, new_code:str):
+    '''
+    Overwrites a provided process section with new code. Valid options for code_section 
+    are: prolog, metadata, data, and epilog. The provided new_code will completely
+    replace the existing code in that section. Use this in combination with get functions
+    for code sections to insert new code in the middle of a section or make edits to existing
+    code.
+
+    Args:
+        process_name: the name of the process to inject code into
+        code_section: the TI process section where the code should be inserted. 
+            valid options are: prolog, metadata, data, and epilog
+        new_code: a string containing the exact code and formatting to insert
+    Returns:
+        Process: the process object which has been changed
+    '''
+    proc = tm1.processes.get(name_process=process_name)
+    if code_section == 'prolog':
+        proc.prolog_procedure=new_code
+    elif code_section == 'metadata':
+        proc.metadata_procedure=new_code
+    elif code_section == 'data':
+        proc.data_procedure=new_code
+    elif code_section == 'epilog':
+        proc.epilog_procedure=new_code
+    else:
+        return 'Failed - Please enter a valid code section. options are prolog, metadata, data, and epilog'
+    tm1.processes.update(proc)
+    return proc
+    
 ##================================================================ EXISTS ===============================================================================
+
 @mcp.tool()
 async def element_exists_in_dim(el_name: str, dim: str):
     """
