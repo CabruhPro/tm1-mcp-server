@@ -1,5 +1,5 @@
 from typing import Any
-#import httpx
+import httpx
 from mcp.server.fastmcp import FastMCP
 from TM1py.Services import TM1Service
 from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process,Chore,ChoreTask,ChoreFrequency,ChoreStartTime
@@ -7,8 +7,9 @@ from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process,Chore,ChoreTa
 #import os
 
 #Current Outstanding
-#   -create a chore of them with configs
-#   -delete process, cube, dimension, dimension elements
+#   -set parent/child relationships in dimensions
+#   -edit, create, delete attributes
+#   -create a chore of processes with config options
 #   -create views
 #   -export views to csv or xlsx
 
@@ -27,10 +28,6 @@ from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process,Chore,ChoreTa
 
 # Initialize FastMCP server
 mcp = FastMCP("tm1-v12")
-
-# Constants
-# NWS_API_BASE = "https://api.weather.gov"
-# USER_AGENT = "weather-app/1.0"
 
 V12_API_KEY = "azE6dXNyX2QxY2ViYzI1LTQ2YmQtM2RlNS1hZTZkLTQxMmNlOGEwZjE1ODo2aE04a3NYUTJ5cnl1MHpjV29VQ1ZXVWxEcVFYdlBCanUxa0ZXZWJJVS80PTpDdDZy"
 
@@ -520,6 +517,7 @@ async def overwrite_process_code_section(process_name:str, code_section:str, new
     tm1.processes.update(proc)
     return proc
     
+#Note: currently broken because the TM1py chore update function is broken, may need to proceed by TM1 REST API if functionality is required
 # @mcp.tool()
 # async def insert_process_into_chore(chore_name: str, process_name: str, parameters: list[dict[str, str]], position: int = 1):
 #     """
@@ -557,4 +555,4 @@ async def element_exists_in_dim(el_name: str, dim: str):
 #main method - starts MCP server
 if __name__ == "__main__":
     # Initialize and run the server
-    mcp.run(transport='stdio')
+    mcp.run()
