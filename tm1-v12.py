@@ -1,10 +1,14 @@
 from typing import Any
-import httpx
-from mcp.server.fastmcp import FastMCP
+#import httpx
+from fastmcp import FastMCP
 from TM1py.Services import TM1Service
-from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process,Chore,ChoreTask,ChoreFrequency,ChoreStartTime
-#from dotenv import load_dotenv
-#import os
+from TM1py.Objects import Dimension,Hierarchy,Cube,Process,Chore,ChoreFrequency,ChoreStartTime
+import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+import os
 
 #Current Outstanding
 #   -set parent/child relationships in dimensions
@@ -28,19 +32,31 @@ from TM1py.Objects import Dimension,Element,Hierarchy,Cube,Process,Chore,ChoreTa
 
 # Initialize FastMCP server
 mcp = FastMCP("tm1-v12")
-
-V12_API_KEY = "azE6dXNyX2QxY2ViYzI1LTQ2YmQtM2RlNS1hZTZkLTQxMmNlOGEwZjE1ODo2aE04a3NYUTJ5cnl1MHpjV29VQ1ZXVWxEcVFYdlBCanUxa0ZXZWJJVS80PTpDdDZy"
-
+load_dotenv()
 params = {
     "base_url": "https://us-east-1.planninganalytics.saas.ibm.com/api/RGLC2XR62EDS/v0/tm1/Watson_Integration/",
     "user": "apikey",
-    "password": V12_API_KEY, #os.getenv("V12_API_KEY"),
+    "password": os.getenv("V12_API_KEY"),
     "async_requests_mode": True,
     "ssl": True,
     "verify": True
 }
 tm1 = TM1Service(**params)
-    
+
+# sse_app=mcp.sse_app()
+# sse_app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"]
+# )
+
+# async def health_check(request: Request):
+#     return JSONResponse({"status": "healthy", "server": "tm1-v12", "mcp_enabled": True})
+
+# mcp.add_route("/health", health_check, methods=["GET"])
+
 ##=============================================================== GETS ===============================================================================
 
 @mcp.tool()
@@ -555,4 +571,5 @@ async def element_exists_in_dim(el_name: str, dim: str):
 #main method - starts MCP server
 if __name__ == "__main__":
     # Initialize and run the server
+    # mcp.run(transport="streamable-http")
     mcp.run()
